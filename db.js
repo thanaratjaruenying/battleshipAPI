@@ -23,24 +23,6 @@ export default {
       //     size: 4
       //   }],
       },
-      'ships': {
-        'battleship': {
-          'amount': 1,
-          'size': 4
-        },
-        'cruiser': {
-          'amount': 2,
-          'size': 3
-        },
-        'destroyer': {
-          'amount': 3,
-          'size': 2
-        },
-        'submarine': {
-          'amount': 3,
-          'size': 1
-        }
-      }
     },
     // ครอบครองกิต
     'occupyGrids': [],

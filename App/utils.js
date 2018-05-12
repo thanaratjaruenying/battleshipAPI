@@ -19,24 +19,6 @@ export const initState = {
       cruisers: [],
       destroyers: [],
       submarines: [],
-    },
-    ships: {
-      battleship: {
-        amount: 1,
-        size: 4
-      },
-      cruiser: {
-        amount: 2,
-        size: 3
-      },
-      destroyer: {
-        amount: 3,
-        size: 2
-      },
-      submarine: {
-        amount: 3,
-        size: 1
-      }
     }
   },
   occupyGrids: [],
@@ -102,13 +84,11 @@ export function getCloseGrids(coordinates = [], adjacentGrids = []) {
 }
 
 export function placedShips(placements) {
-  for (const shipType in placements) {
-    if (placements.hasOwnProperty(shipType)) {
-      const shipLength = placements[shipType].length;
-      const maximumShip = ships[shipType].amount;
-      if (shipLength !== maximumShip) {
-        return false
-      }
+  for (const shipType in ships) {
+    const shipLength = placements[shipType].length;
+    const maximumShip = ships[shipType].amount;
+    if (shipLength !== maximumShip) {
+      return false
     }
   }
   return true;
