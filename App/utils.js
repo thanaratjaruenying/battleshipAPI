@@ -80,7 +80,7 @@ export function getCloseGrids(coordinates = [], adjacentGrids = []) {
   }
   const uniqGrids = _.unionWith(closeGrid, _.isEqual);
   const diffGrids = _.differenceWith(uniqGrids, coordinates, _.isEqual);
-  return _.differenceWith(diffGrids, adjacentGrids, _.isEqual);
+  return _.differenceWith(diffGrids, adjacentGrids, (a, b) => a.row === b.row && a.col === b.col);
 }
 
 export function placedShips(placements) {

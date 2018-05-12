@@ -89,25 +89,15 @@ export default {
       return res.status(400).send('Finished');
     }
 
-    // defender.placements[shipType].push({
-    //   grids: [...coordinates],
-    //   status: utils.shipStatus.float,
-    //   direction: shipDirection,
-    //   size: coordinates.length
-    // });
     const newPlacements = [{
       grids: [...coordinates],
       status: utils.shipStatus.float,
       direction: shipDirection,
       size: coordinates.length
     }];
-
-    // occupyGrids.push(...coordinates);
     const closeGrids = utils.getCloseGrids(coordinates, adjacentGrids);
-    // adjacentGrids.push(...closeGrids);
 
     if (utils.placedShips(defender.placements)) {
-      // gameState = utils.gameState.inProgress;
       await GameState.update({_id: testId}, {
         $set: {gameState: utils.gameState.inProgress}
       }, (err, gm) => {
@@ -116,23 +106,12 @@ export default {
         }
       });
     }
-
+    const keyPlacements = `defender.placements.${shipType}`;
     await GameState.update({
       _id: testId
     },{
-      $set: {
-        'defender.placements': {
-          [shipType]: {
-            status: utils.shipStatus.float,
-            direction: shipDirection,
-            size: coordinates.length,
-            $addToSet: {
-              grids: coordinates
-            }
-          }
-        }
-      },
       $addToSet: {
+        [keyPlacements]: newPlacements,
         occupyGrids: coordinates,
         adjacentGrids: closeGrids
       }
