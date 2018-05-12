@@ -7,7 +7,7 @@ const testId = '5af6e8fd9f6a9525d8695135';
 export default {
   getGameState(req, res) {
     const {id} = req.query;
-    GameState.find({_id: testId}, (err, gm) => {
+    GameState.findOne({_id: testId}, (err, gm) => {
       if (err) {
         return res.status(500).json(err);
       }
@@ -51,12 +51,12 @@ export default {
   },
   async placedShip(req, res) {
     let {id, shipType, coordinates, shipDirection} = req.query;
-    const db = await GameState.find({_id: testId}, (err, gm) => {
+    const db = await GameState.findOne({_id: testId}, (err, gm) => {
       if (err) {
         return res.status(500).json(err);
       }
     });
-    const {occupyGrids, adjacentGrids, gameState, defender} = db[0];
+    const {occupyGrids, adjacentGrids, gameState, defender} = db;
 
     if (!coordinates) {
       return res.status(400).send('Invalid coordinates ' + coordinates);
@@ -122,5 +122,55 @@ export default {
     });
 
     res.status(200).send('Placed');
+  },
+  async attackShip(req, res) {
+    let {id, coordinate} = req.query;
+    const db = await GameState.findOne({_id: testId}, (err, gm) => {
+      if (err) {
+        return res.status(500).json(err);
+      }
+    });
+    let {
+      occupyGrids, adjacentGrids, gameState, defender: {placements},
+      attacker: {hitGrids, missGrids}
+    } = db;
+
+    // switch (gameState) {
+    //   case utils.gameState.joining: return res.status(400).send('Create game first');
+    //   case utils.gameState.arranging: return res.status(400).send('Place all ships before attacking');
+    //   case utils.gameState.finished: return res.status(400).send('Game finished');
+    // }
+
+    if (!coordinate) {
+      return res.status(400).send('Invalid coordinate ' + coordinate);
+    }
+    coordinate = JSON.parse(coordinate);
+
+    const foundHit = hitGrids.find(hg => hg.row === coordinate.row && hg.col === coordinate.col);
+    const foundMiss = hitGrids.find(hg => hg.row === coordinate.row && hg.col === coordinate.col);
+    if (foundHit || foundMiss) {
+      return res.status(400).send('Attacked ' + JSON.stringify(coordinate));
+    }
+
+    const hitGrid = occupyGrids.find(oc => oc.row === coordinate.row && oc.col === coordinate.col);
+    if (hitGrid) {
+      hitGrids.push(coordinate)
+      const {theShip, ship, statusAfterAttack} = utils.findAttackedShip(coordinate, placements);
+      console.log(theShip, ship, statusAfterAttack);
+      // placements[ship] = [...theShips];
+
+      // const isGameover = utils.isGameover(placements);
+      // if (isGameover) {
+      //   db[testId].gameState = utils.gameState.finished;
+      //   return res.status(200).send([
+      //     statusAfterAttack,
+      //     `Game over, Missed ${missGrids.length} shot`
+      //   ]);
+      // }
+      res.status(200).send(statusAfterAttack);
+    } else {
+      missGrids.push(coordinate);
+      res.status(200).send('Miss');
+    }
   },
 }

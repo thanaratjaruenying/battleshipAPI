@@ -10,20 +10,11 @@ export function setup(router) {
   // create game
   router.post('/create', (req, res, next) => {
     controllers.createGame(req, res);
-    // let currentGame = db[testId];
-    // if (currentGame.gameState === utils.gameState.joining) {
-    //   currentGame.gameState = utils.gameState.arranging;
-    //   res.status(200).send(currentGame);
-    // } else {
-    //   res.status(200).send({text: 'Already created', state: currentGame});
-    // }
   });
 
   // reset game to initial state
   router.post('/reset', async (req, res, next) => {
     controllers.resetGame(req, res);
-    // db[testId] = {...utils.initState};
-    // res.status(200).send('Reset successfully');
   });
 
   // place ship into the ocean
@@ -33,6 +24,7 @@ export function setup(router) {
 
   // attack target on the ocean
   router.post('/attack', async (req, res, next) => {
+    controllers.attackShip(req, res);
     let {coordinate} = req.query;
     let {
       occupyGrids, adjacentGrids, gameState, defender: {placements},

@@ -98,18 +98,22 @@ export function findAttackedShip(coordinate = {}, placements = {}) {
   const newPlacements = {...placements};
   let statusAfterAttack = '';
   for (const ship in newPlacements) {
-    const theShips = newPlacements[ship];
-    for (const e in theShips) {
-      const theShip = theShips[e];
-      const foundPoint = theShip.grids.find(e => e.row === coordinate.row && e.col === coordinate.col);
-      if (foundPoint) {
-        theShip.size -= 1;
-        statusAfterAttack = 'Hit';
-        if (theShip.size <= 0) {
-          theShip.status = shipStatus.sunk;
-          statusAfterAttack = `You just sunk the ${ship}`;
+    if (ships.hasOwnProperty(ship)) {
+      const theShips = newPlacements[ship];
+      for (const e in theShips) {
+        if (parseInt(e) >= 0) {
+          const theShip = theShips[e];
+          const foundPoint = theShip.grids.find(e => e.row === coordinate.row && e.col === coordinate.col);
+          if (foundPoint) {
+            theShip.size -= 1;
+            statusAfterAttack = 'Hit';
+            if (theShip.size <= 0) {
+              theShip.status = shipStatus.sunk;
+              statusAfterAttack = `You just sunk the ${ship}`;
+            }
+            return {theShip, ship, statusAfterAttack};
+          }
         }
-        return {theShips, ship, statusAfterAttack};
       }
     }
   }
