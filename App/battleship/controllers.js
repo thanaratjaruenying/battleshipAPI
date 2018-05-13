@@ -1,61 +1,67 @@
 import mongoose from 'mongoose';
-const GameState = mongoose.model('GameState');
+import Promise from 'bluebird';
+Promise.promisifyAll(require('mongoose'));
 
+const GameState = mongoose.model('GameState');
 import * as utils from '../utils';
-const testId = '5af7a3cd8da62c02e751c0c8';
 
 export default {
-  getGameState(req, res) {
+  async getGameState(req, res) {
     const {id} = req.query;
-    GameState.findOne({_id: testId}, (err, gm) => {
-      if (err) {
-        return res.status(500).json(err);
-      }
-      return res.status(200).json(gm);
-    });
+    try {
+      const result = await GameState.findOne({_id: id});
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json(err);
+    }
   },
-  createGame(req, res) {
-    const newGame = new GameState();
-    newGame.set({gameState: utils.gameState.arranging});
-    newGame.save((err, gm) => {
-      if (err) {
-        return res.status(500).json(err);
-      }
-      return res.status(200).json(gm);
-    });
+  async createGame(req, res) {
+    try {
+      const newGame = new GameState();
+      newGame.set({gameState: utils.gameState.arranging});
+      const result = await newGame.save();
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json(err);
+    }
   },
-  resetGame(req, res) {
+  async resetGame(req, res) {
     const {id} = req.query;
-    GameState.update({ _id: testId }, {
-      $set: {
-        size: '10',
-        defender: {
-          battleships: [],
-          cruisers: [],
-          destroyers: [],
-          submarines: []
-        },
-        occupyGrids: [],
-        adjacentGrids: [],
-        attacker: {
-          hitGrids: [],
-          missGrids: []
+    try {
+      const result = await GameState.update({ _id: id}, {
+        $set: {
+          size: '10',
+          defender: {
+            battleships: [],
+            cruisers: [],
+            destroyers: [],
+            submarines: []
+          },
+          occupyGrids: [],
+          adjacentGrids: [],
+          attacker: {
+            hitGrids: [],
+            missGrids: []
+          }
         }
-      }
-    }, (err, gm) => {
-      if (err) {
-        return res.status(500).json(err);
-      }
-      return res.status(200).send('Reset successfully');
-    });
+      });
+      res.status(200).send('Reset successfully');
+    } catch (err) {
+      res.status(500).json(err);
+    }
   },
   async placedShip(req, res) {
     let {id, shipType, coordinates, shipDirection} = req.query;
-    const db = await GameState.findOne({_id: testId}, (err, gm) => {
-      if (err) {
-        return res.status(500).json(err);
-      }
-    });
+    let db;
+
+    try {
+      db = await GameState.findOne({_id: id});
+    } catch (err) {
+      return res.status(500).json(err);
+    }
+    if (!db) {
+      return res.status(404);
+    }
     const {occupyGrids, adjacentGrids, gameState, defender} = db;
 
     if (!coordinates) {
@@ -98,38 +104,42 @@ export default {
     const closeGrids = utils.getCloseGrids(coordinates, adjacentGrids);
 
     if (utils.placedShips(defender.placements)) {
-      await GameState.update({_id: testId}, {
-        $set: {gameState: utils.gameState.inProgress}
-      }, (err, gm) => {
-        if (err) {
-          return res.send(err);
-        }
-      });
+      try {
+        await GameState.update({_id: id}, {
+          $set: {gameState: utils.gameState.inProgress}
+        }); 
+      } catch (err) {
+        return res.status(500).send(err);
+      }
     }
     const keyPlacements = `defender.placements.${shipType}`;
-    await GameState.update({
-      _id: testId
-    },{
-      $addToSet: {
-        [keyPlacements]: newPlacements,
-        occupyGrids: coordinates,
-        adjacentGrids: closeGrids
-      }
-    }, (err, gm) => {
-      if (err) {
-        return res.send(err);
-      }
-    });
+    try {
+      await GameState.update({
+        _id: id
+      },{
+        $addToSet: {
+          [keyPlacements]: newPlacements,
+          occupyGrids: coordinates,
+          adjacentGrids: closeGrids
+        }
+      });
+    } catch (err) {
+      return res.status(500).send(err);
+    }
 
     res.status(200).send('Placed');
   },
   async attackShip(req, res) {
     let {id, coordinate} = req.query;
-    const db = await GameState.findOne({_id: testId}, (err, gm) => {
-      if (err) {
-        return res.status(500).json(err);
-      }
-    });
+    let db;
+    try {
+      db = await GameState.findOne({_id: id});
+    } catch (err) {
+      return res.status(500).json(err);
+    }
+    if (!db) {
+      return res.status(404);
+    }
     let {
       occupyGrids, adjacentGrids, gameState, defender: {placements},
       attacker: {hitGrids, missGrids}
@@ -156,50 +166,52 @@ export default {
     if (hitGrid) {
       const {theShip, ship, statusAfterAttack} = utils.findAttackedShip(coordinate, placements);
       const keyPlacements = `defender.placements.${ship}`;
-      await GameState.findOneAndUpdate({
-        _id: testId,
-      }, {
-        $addToSet: {
-          'attacker.hitGrids': coordinate
-        },
-        $set: {
-          [keyPlacements + '.$[grid]']: {
-            grids: theShip.grids,
-            size: theShip.size,
-            status: theShip.status,
-          }
-        }
-      }, {
-        arrayFilters: [{'grid._id': mongoose.Types.ObjectId(theShip._id)}]
-      }, (err, gm) => {
-        if (err) {
-          return res.send(err);
-        }
-      });
-      const isGameover = utils.isGameover(placements);
-      if (isGameover) {
-        await GameState.findOneAndUpdate({_id: testId,},
-          {$set: {gameState: utils.gameState.finished}},
-          (err, gm) => {
-            if (err) {
-              return res.send(err);
+      try {
+        await GameState.findOneAndUpdate({
+          _id: id,
+        }, {
+          $addToSet: {
+            'attacker.hitGrids': coordinate
+          },
+          $set: {
+            [keyPlacements + '.$[grid]']: {
+              grids: theShip.grids,
+              size: theShip.size,
+              status: theShip.status,
             }
-          });
-        return res.status(200).send([
-          statusAfterAttack,
-          `Game over, Missed ${missGrids.length} shot`
-        ]);
+          }
+        }, {
+          arrayFilters: [{'grid._id': mongoose.Types.ObjectId(theShip._id)}]
+        });
+      } catch (err) {
+        return res.send(500).send(error);
       }
       
+      const isGameover = utils.isGameover(placements);
+      if (isGameover) {
+        try {
+          await GameState.findOneAndUpdate({_id: id,},
+            {$set: {gameState: utils.gameState.finished}}
+          );
+          return res.status(200).send([
+            statusAfterAttack,
+            `Game over, Missed ${missGrids.length} shot`
+          ]);
+        } catch (err) {
+          return res.send(500).send(error);
+        }
+      }
+
       res.status(200).send(statusAfterAttack);
     } else {
-      await GameState.findOneAndUpdate({_id: testId,},
-      {$addToSet: {'attacker.missGrids': coordinate}},
-      (err, gm) => {
-        if (err) {
-          return res.send(err);
-        }
-      });
+      try {
+        await GameState.findOneAndUpdate({_id: id,},
+          {$addToSet: {'attacker.missGrids': coordinate}}
+        );
+      } catch (err) {
+        return res.status(500).send(err);
+      }
+      
       res.status(200).send('Miss');
     }
   },
