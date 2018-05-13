@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 const GameState = mongoose.model('GameState');
 
 import * as utils from '../utils';
-const testId = '5af6e8fd9f6a9525d8695135';
+const testId = '5af7a3cd8da62c02e751c0c8';
 
 export default {
   getGameState(req, res) {
@@ -135,11 +135,11 @@ export default {
       attacker: {hitGrids, missGrids}
     } = db;
 
-    // switch (gameState) {
-    //   case utils.gameState.joining: return res.status(400).send('Create game first');
-    //   case utils.gameState.arranging: return res.status(400).send('Place all ships before attacking');
-    //   case utils.gameState.finished: return res.status(400).send('Game finished');
-    // }
+    switch (gameState) {
+      case utils.gameState.joining: return res.status(400).send('Create game first');
+      case utils.gameState.arranging: return res.status(400).send('Place all ships before attacking');
+      case utils.gameState.finished: return res.status(400).send('Game finished');
+    }
 
     if (!coordinate) {
       return res.status(400).send('Invalid coordinate ' + coordinate);
@@ -154,22 +154,52 @@ export default {
 
     const hitGrid = occupyGrids.find(oc => oc.row === coordinate.row && oc.col === coordinate.col);
     if (hitGrid) {
-      hitGrids.push(coordinate)
       const {theShip, ship, statusAfterAttack} = utils.findAttackedShip(coordinate, placements);
-      console.log(theShip, ship, statusAfterAttack);
-      // placements[ship] = [...theShips];
-
-      // const isGameover = utils.isGameover(placements);
-      // if (isGameover) {
-      //   db[testId].gameState = utils.gameState.finished;
-      //   return res.status(200).send([
-      //     statusAfterAttack,
-      //     `Game over, Missed ${missGrids.length} shot`
-      //   ]);
-      // }
+      const keyPlacements = `defender.placements.${ship}`;
+      await GameState.findOneAndUpdate({
+        _id: testId,
+      }, {
+        $addToSet: {
+          'attacker.hitGrids': coordinate
+        },
+        $set: {
+          [keyPlacements + '.$[grid]']: {
+            grids: theShip.grids,
+            size: theShip.size,
+            status: theShip.status,
+          }
+        }
+      }, {
+        arrayFilters: [{'grid._id': mongoose.Types.ObjectId(theShip._id)}]
+      }, (err, gm) => {
+        if (err) {
+          return res.send(err);
+        }
+      });
+      const isGameover = utils.isGameover(placements);
+      if (isGameover) {
+        await GameState.findOneAndUpdate({_id: testId,},
+          {$set: {gameState: utils.gameState.finished}},
+          (err, gm) => {
+            if (err) {
+              return res.send(err);
+            }
+          });
+        return res.status(200).send([
+          statusAfterAttack,
+          `Game over, Missed ${missGrids.length} shot`
+        ]);
+      }
+      
       res.status(200).send(statusAfterAttack);
     } else {
-      missGrids.push(coordinate);
+      await GameState.findOneAndUpdate({_id: testId,},
+      {$addToSet: {'attacker.missGrids': coordinate}},
+      (err, gm) => {
+        if (err) {
+          return res.send(err);
+        }
+      });
       res.status(200).send('Miss');
     }
   },

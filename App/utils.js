@@ -122,7 +122,7 @@ export function findAttackedShip(coordinate = {}, placements = {}) {
 
 export function isGameover(placements) {
   for (const ship in placements) {
-    if (placements.hasOwnProperty(ship )) {
+    if (placements.hasOwnProperty(ship)) {
       const theShips = placements[ship];
       for (const e in theShips) {
         const theShip = theShips[e];
