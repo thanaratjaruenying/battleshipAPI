@@ -1,6 +1,5 @@
 import * as utils from '../utils';
 import controllers from './controllers';
-import db from '../../db';
 
 export function setup(router) {
   router.all('/', (req, res) => {
