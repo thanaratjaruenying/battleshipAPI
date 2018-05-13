@@ -67,7 +67,10 @@ export default {
     if (!coordinates) {
       return res.status(400).send('Invalid coordinates ' + coordinates);
     }
-    coordinates = JSON.parse(coordinates);
+    if (typeof coordinates === 'string') {
+      coordinates = JSON.parse(coordinates);
+    }
+
     if (!shipType || !shipDirection) {
       return res.status(400).send('Missed some query string');
     }
@@ -103,15 +106,6 @@ export default {
     }];
     const closeGrids = utils.getCloseGrids(coordinates, adjacentGrids);
 
-    if (utils.placedShips(defender.placements)) {
-      try {
-        await GameState.update({_id: id}, {
-          $set: {gameState: utils.gameState.inProgress}
-        }); 
-      } catch (err) {
-        return res.status(500).send(err);
-      }
-    }
     const keyPlacements = `defender.placements.${shipType}`;
     try {
       await GameState.update({
@@ -126,7 +120,15 @@ export default {
     } catch (err) {
       return res.status(500).send(err);
     }
-
+    if (utils.placedShips(defender.placements)) {
+      try {
+        await GameState.update({_id: id}, {
+          $set: {gameState: utils.gameState.inProgress}
+        }); 
+      } catch (err) {
+        return res.status(500).send(err);
+      }
+    }
     res.status(200).send('Placed');
   },
   async attackShip(req, res) {
@@ -150,12 +152,13 @@ export default {
       case utils.gameState.arranging: return res.status(400).send('Place all ships before attacking');
       case utils.gameState.finished: return res.status(400).send('Game finished');
     }
-
+    
     if (!coordinate) {
       return res.status(400).send('Invalid coordinate ' + coordinate);
     }
-    coordinate = JSON.parse(coordinate);
-
+    if (typeof coordinate === 'string') {
+      coordinate = JSON.parse(coordinate);      
+    }
     const foundHit = hitGrids.find(hg => hg.row === coordinate.row && hg.col === coordinate.col);
     const foundMiss = hitGrids.find(hg => hg.row === coordinate.row && hg.col === coordinate.col);
     if (foundHit || foundMiss) {

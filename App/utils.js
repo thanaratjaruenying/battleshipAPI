@@ -36,11 +36,13 @@ export const shipDirection = {
   horizontal: 'horizontal'
 };
 
+export const totalShips = 10;
+
 export const ships = {
   battleships: {amount: 1, size: 4},
   cruisers: {amount: 2, size: 3},
   destroyers: {amount: 3, size: 2},
-  submarines: {amount: 3, size: 1}
+  submarines: {amount: 4, size: 1}
 };
 
 export function isValidCoordinate(coordinates = [], occupyGrids = [], adjacentGrids = []) {
@@ -84,14 +86,12 @@ export function getCloseGrids(coordinates = [], adjacentGrids = []) {
 }
 
 export function placedShips(placements) {
+  let sumShip = 0;
   for (const shipType in ships) {
     const shipLength = placements[shipType].length;
-    const maximumShip = ships[shipType].amount;
-    if (shipLength !== maximumShip) {
-      return false
-    }
+    sumShip += shipLength;
   }
-  return true;
+  return (totalShips - sumShip) === 1 ? true : false;
 }
 
 export function findAttackedShip(coordinate = {}, placements = {}) {
